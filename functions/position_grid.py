@@ -6,7 +6,7 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 1000)
 
-df = call_data()
+# df = call_data()
 
 ######### Binary Position Dataframe
 
@@ -71,9 +71,11 @@ for i in range(len(split_column)):
         if 'ST' in k:
             df.loc[i, 'ST'] = 1
 
-# print(df[['Position', 'GK', 'DL', 'DC', 'DR', 'WBL', 'DM', 'WBR', 'ML', 'MC', 'MR', 'AML', 'AMC', 'AMR', 'ST']])
 
+# Calling dataframe from main page
 
-def call_data():
+# def call_data():
 
-    return df
+#    df.to_csv('./output.csv', index=False)
+
+#    return df

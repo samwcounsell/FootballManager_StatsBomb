@@ -1,0 +1,21 @@
+.rc-slider-track {
+  background-color: indigo;
+}
+
+.rc-slider-dot-active {
+  border-color: indigo;
+  border: solid 2px indigo;
+}
+
+.rc-slider-handle {
+  background-color: white;
+  border-color: indigo;
+}
+
+.rc-slider-handle:hover {
+  border-color: indigo;
+}
+
+.rc-slider-handle-active:active {
+  border-color: indigo;
+}

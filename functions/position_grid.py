@@ -6,7 +6,7 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 1000)
 
-# df = call_data()
+df = call_data()
 
 ######### Binary Position Dataframe
 
@@ -74,8 +74,4 @@ for i in range(len(split_column)):
 
 # Calling dataframe from main page
 
-# def call_data():
-
-#    df.to_csv('./output.csv', index=False)
-
-#    return df
+df.to_csv('../new_output.csv', index=False)

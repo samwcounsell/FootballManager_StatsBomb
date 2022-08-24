@@ -17,7 +17,8 @@ navbar = create_navbar()
 # df = call_data()
 
 # TODO: Temporary as position grid is slower and can use this output csv for testing
-df = pd.read_csv('./output.csv')
+df = pd.read_csv('./new_output.csv', dtype={"Personality": "string"})
+df['Personality'] = df['Personality'].fillna('-')
 compare_df = pd.DataFrame([])
 
 # TODO: Move adding new stats to hidden function
@@ -28,13 +29,17 @@ df['Gls/90'] = df['Gls'] * df['Mins'] / 90
 df['Dist/90'] = df['Distance'] * df['Mins'] / 90
 df['xG/90'] = df['xG'] * df['Mins'] / 90
 df['Off/90'] = df['Off'] * df['Mins'] / 90
+df['Cr/90'] = df['Cr A'] * df['Mins'] / 90
+df['K Tck/90'] = df['K Tck'] * df['Mins'] / 90
+df['Fls/90'] = df['Fls'] * df['Mins'] / 90
 df = df.round(decimals=3)
 
 df.replace([np.inf, -np.inf], 0, inplace=True)
 df = df.fillna(0)
 
 # TODO: Move adding skillset ratings to hidden function
-skillsets = ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement']
+skillsets = ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement', 'Crossing', 'Work Rate',
+             'Passing', 'Tackling', 'Intercepting', 'Goalkeeping']
 
 df['Finishing'] = (df['Gls/xG'] ** 2) * df['Shot %'] * df['Gls/90']
 df['Dribbling'] = df['Drb/90'] * df['FA/90']
@@ -43,6 +48,12 @@ df['Aerial'] = df['Height'] * df['Weight'] * df['Hdr %'] * df['Hdrs W/90'] * df[
 df['Assisting'] = df['Asts/90'] * df['Ch C/90'] * df['K Ps/90'] * df['Pas %']
 df['Pressing'] = df['Dist/90'] * df['Tck'] * df['Int/90']
 df['Movement'] = df['xG/90'] + df['Shot/90'] + df['Off/90']
+df['Crossing'] = df['Cr/90'] * (df['Cr C/A'] ** 2) * df['Asts/90']
+df['Work Rate'] = df['Dist/90'] * df['Mins/Gm']
+df['Passing'] = df['Ps A/90'] * df['Pas %'] * df['K Ps/90']
+df['Tackling'] = df['K Tck/90'] * df['Tck'] * df['Tck R'] / df['Fls/90']
+df['Intercepting'] = (df['Int/90'] ** 2) * df['Dist/90']
+df['Goalkeeping'] = df['Sv %']
 
 # Required lists/dicts/etc.,
 positions = ['GK', 'DL', 'DC', 'DR', 'WBL', 'DM', 'WBR', 'ML', 'MC', 'MR', 'AML', 'AMC', 'AMR', 'ST']
@@ -63,24 +74,24 @@ position_roles = {
     'MR': ['Defensive Winger', 'Winger', 'Inverted Winger'],
     'AML': ['Winger', 'Inverted Winger', 'Inside Forward'],
     'AMC': ['Attacking Midfielder', 'Advanced Playmaker', 'Shadow Striker'],
-    'AML': ['Winger', 'Inverted Winger', 'Inside Forward'],
+    'AMR': ['Winger', 'Inverted Winger', 'Inside Forward'],
     'ST': ['Advanced Forward', 'False Nine', 'Poacher', 'Target Forward', 'Pressing Forward']
 }
 
 position_skills = {
     'GK': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'DL': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'DC': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'DR': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'WBL': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'WBR': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'DM': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'ML': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'MC': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'MR': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'AML': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'AMC': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
-    'AML': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
+    'DL': ['Crossing', 'Dribbling', 'Aerial', 'Assisting', 'Work Rate', 'Tackling'],
+    'DC': ['Passing', 'Pressing', 'Aerial', 'Finishing', 'Intercepting', 'Tackling'],
+    'DR': ['Crossing', 'Dribbling', 'Aerial', 'Assisting', 'Work Rate', 'Tackling'],
+    'WBL': ['Crossing', 'Dribbling', 'Passing', 'Assisting', 'Work Rate', 'Tackling'],
+    'WBR': ['Crossing', 'Dribbling', 'Passing', 'Assisting', 'Work Rate', 'Tackling'],
+    'DM': ['Passing', 'Work Rate', 'Aerial', 'Assisting', 'Intercepting', 'Tackling'],
+    'ML': ['Dribbling', 'Passing', 'Assisting', 'Work Rate', 'Movement', 'Tackling'],
+    'MC': ['Finishing', 'Dribbling', 'Tackling', 'Assisting', 'Passing', 'Work Rate'],
+    'MR': ['Dribbling', 'Passing', 'Assisting', 'Work Rate', 'Movement', 'Tackling'],
+    'AML': ['Finishing', 'Dribbling', 'Crossing', 'Assisting', 'Work Rate', 'Movement'],
+    'AMC': ['Finishing', 'Dribbling', 'Passing', 'Assisting', 'Crossing', 'Movement'],
+    'AMR': ['Finishing', 'Dribbling', 'Crossing', 'Assisting', 'Work Rate', 'Movement'],
     'ST': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement']
 }
 
@@ -96,8 +107,23 @@ role_stats = {
     'Defensive Midfielder': [],
     'Anchor Man': [],
     'Deeplying Playmaker': [],
-
-    'Advanced Forward': ['xG', 'Gls', 'Gls/xG', 'Drb/90', 'Ch C/90', 'Asts/90']
+    'Advanced Playmaker': [],
+    'Box-to-Box': [],
+    'Ballwinning Midfielder': [],
+    'Mezzala': [],
+    'Central Midfielder (At)': [],
+    'Defensive Winger': [],
+    'Winger': [],
+    'Inverted Winger': [],
+    'Inside Forward': [],
+    'Attacking Midfielder': [],
+    'Advanced Playmaker': [],
+    'Shadow Striker': [],
+    'Advanced Forward': ['xG', 'Gls', 'Gls/xG', 'Drb/90', 'Ch C/90', 'Asts/90'],
+    'False Nine': [],
+    'Poacher': [],
+    'Target Forward': [],
+    'Pressing Forward': [],
 }
 
 # Page Layout
@@ -149,7 +175,7 @@ layout = html.Div([
                     ])
                 ], xs=12)
             ], className='pt-1')
-        ], xs=6),
+        ], xs=4),
         dbc.Col([
 
             # Range Sliders
@@ -175,9 +201,11 @@ layout = html.Div([
             dbc.Card([
                 dbc.CardBody([
                     html.H4('Top Reccomendations'),
+                    html.Div(id='recommendation_table')
+
                 ])
             ], className='h-100 text-center')
-        ], xs=3),
+        ], xs=5),
     ]),
 
     # Active dataframes and datalists
@@ -199,8 +227,7 @@ layout = html.Div([
     Output('active_data', 'data'),
     [Input('position_dropdown', 'value'),
      Input('age_slider', 'value'),
-     Input('minutes_slider', 'value'),
-     ],
+     Input('minutes_slider', 'value')],
 )
 def filter_data(position, age, minutes):
 
@@ -217,7 +244,9 @@ def filter_data(position, age, minutes):
 
     return new_df.to_json(orient='split')
 
-# Player Stats Callbacks
+### Table Callbacks
+
+# Player Compare Table
 @callback(
     Output('compare_table', 'children'),
     [Input('position_dropdown', 'value'),
@@ -236,6 +265,31 @@ def update_compare(position, role, playerA, playerB):
 
     return dash_table.DataTable(compare_table.to_dict('records'), [{"name": i, "id": i} for i in compare_table.columns])
 
+# Recommendations Table
+@callback(
+    Output('recommendation_table', 'children'),
+    [Input('active_data', 'data'),
+    Input('position_dropdown', 'value')]
+)
+def update_recommend(df, position):
+
+    df = pd.read_json(df, orient='split')
+
+    for skill in skillsets:
+        df[skill] = df[skill].rank(pct=True)
+
+    # Later change this to sum for role skills rather than position skills
+    df['Sum'] = df[position_skills[position]].sum(1)
+
+    df = df.round(decimals=2).sort_values(by='Sum', ascending=False)
+    skills = ['Name'] + ['Sum'] + position_skills[position]
+    table = df[skills]
+
+    return dash_table.DataTable(table.to_dict('records'), [{"name": i, "id": i} for i in table.columns],
+                                sort_action="native",
+                                sort_mode="multi",
+                                )
+
 ### Dropdown / Input Callbacks
 
 # Role Callbacks
@@ -252,9 +306,9 @@ def update_roles_list(position):
 
 # Player Input Callbacks
 @callback(
-    Output('suggested_names', 'children'),
+    [Output('suggested_names', 'children'),
     Output('playerA_dropdown', 'value'),
-    Output('playerB_dropdown', 'value'),
+    Output('playerB_dropdown', 'value')],
     Input('active_data', 'data')
 )
 def update_player_list(df):
@@ -262,7 +316,8 @@ def update_player_list(df):
     df = pd.read_json(df, orient='split')
     players = list(df.Name.values)
 
-    return [html.Option(value=word) for word in players], players[0], players[2]
+    return [html.Option(value=word) for word in players], players[0], players[1]
+
 
 ### Graph Callbacks
 
@@ -303,7 +358,7 @@ def update_polygon(df, position, playerA, playerB):
         marker=dict(size=1, color="thistle")))
     polygon.update_layout(
         polar=dict(
-            radialaxis=dict(visible=False, tickangle=0),
+            radialaxis=dict(range=[0,1], visible=False, tickangle=0),
             angularaxis=dict(
                 thetaunit="degrees",
                 dtick=60,

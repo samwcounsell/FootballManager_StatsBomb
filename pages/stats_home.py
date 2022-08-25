@@ -2,7 +2,7 @@ import pandas as pd
 from dash import dcc, html, Input, Output, callback, dash_table
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-import numpy as np
+import numpy as np, math
 
 from app_components.navbar import create_navbar
 # from functions.position_grid import call_data
@@ -44,7 +44,7 @@ skillsets = ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movem
 df['Finishing'] = (df['Gls/xG'] ** 2) * df['Shot %'] * df['Gls/90']
 df['Dribbling'] = df['Drb/90'] * df['FA/90']
 # Fix these after proof of working
-df['Aerial'] = df['Height'] * df['Weight'] * df['Hdr %'] * df['Hdrs W/90'] * df['Aer A/90']
+df['Aerial'] = df['Height'] * (df['Weight'] ** 0.5) * df['Hdr %'] * df['Hdrs W/90'] * df['Aer A/90']
 df['Assisting'] = df['Asts/90'] * df['Ch C/90'] * df['K Ps/90'] * df['Pas %']
 df['Pressing'] = df['Dist/90'] * df['Tck'] * df['Int/90']
 df['Movement'] = df['xG/90'] + df['Shot/90'] + df['Off/90']
@@ -64,7 +64,7 @@ position_roles = {
     'GK': ['Goalkeeper', 'Sweeper Keeper'],
     'DL': ['Fullback', 'Wingback', 'Complete Wingback'],
     'DC': ['Central Defender', 'Ballplaying Defender'],
-    'DR': ['Central Defender', 'Ballplaying Defender'],
+    'DR': ['Fullback', 'Wingback', 'Complete Wingback'],
     'WBL': ['Wingback', 'Complete Wingback', 'Inverted Wingback'],
     'WBR': ['Wingback', 'Complete Wingback', 'Inverted Wingback'],
     'DM': ['Defensive Midfielder', 'Anchor Man', 'Deeplying Playmaker'],
@@ -96,8 +96,8 @@ position_skills = {
 }
 
 role_stats = {
-    'Goalkeeper': ['Drb', 'Height'],
-    'Sweeper Keeper': ['Hdrs', 'FA'],
+    'Goalkeeper': ['Sv %'],
+    'Sweeper Keeper': ['Sv %'],
     'Fullback': ['Fls', 'Tck'],
     'Wingback': [],
     'Complete Wingback': [],
@@ -107,7 +107,7 @@ role_stats = {
     'Defensive Midfielder': [],
     'Anchor Man': [],
     'Deeplying Playmaker': [],
-    'Advanced Playmaker': [],
+    'Advanced Playmaker': [''],
     'Box-to-Box': [],
     'Ballwinning Midfielder': [],
     'Mezzala': [],
@@ -117,7 +117,7 @@ role_stats = {
     'Inverted Winger': [],
     'Inside Forward': [],
     'Attacking Midfielder': [],
-    'Advanced Playmaker': [],
+    'Advanced Playmaker': ['Ast', 'Asts/90', 'K Ps/90', 'Pas %', 'Ps C/90', 'Drb/90'],
     'Shadow Striker': [],
     'Advanced Forward': ['xG', 'Gls', 'Gls/xG', 'Drb/90', 'Ch C/90', 'Asts/90'],
     'False Nine': [],
@@ -125,6 +125,14 @@ role_stats = {
     'Target Forward': [],
     'Pressing Forward': [],
 }
+
+#Nations
+nations = ['Any'] + df['Nat'].to_list()
+nations = list(set(nations))
+
+# Leagues
+leagues= ['Any'] + df['Based'].to_list()
+leagues = list(set(leagues))
 
 # Page Layout
 layout = html.Div([
@@ -185,12 +193,20 @@ layout = html.Div([
                     html.H4('Range Sliders / Inputs'),
                     dbc.Row([
                         html.P('Age: '),
-                        dcc.RangeSlider(id='age_slider', min=15, max=45, marks={15: '15', 20: '20',25: '25',30: '30',35: '35',40: '40',45: '45'}, value=[15, 45])
-                    ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11}),
+                        dcc.RangeSlider(15, 45, 1, marks={15: '15', 20: '20',25: '25',30: '30',35: '35',40: '40',45: '45'}, value=[15, 45], id='age_slider')
+                    ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
                     dbc.Row([
                         html.P('Minutes: '),
                         dcc.RangeSlider(0, 6000, 200, value=[200, 6000], marks={0: '0', 1000: '1000', 2000: '2000', 3000: '3000', 4000: '4000', 5000: '5000', 6000: '6000'}, id='minutes_slider')
-                    ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11}),
+                    ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
+                    dbc.Row([
+                        html.P('Nation: '),
+                        dcc.Input(id='nation_dropdown', list='suggested_nations', value='Any', type='text')
+                    ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
+                    dbc.Row([
+                        html.P('League: '),
+                        dcc.Input(id='league_dropdown', list='suggested_leagues', value='Any', type='text')
+                    ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
                 ])
             ], className='h-100 text-center')
         ], xs=3),
@@ -213,6 +229,8 @@ layout = html.Div([
     html.Datalist(id='suggested_names', children=[html.Option(value=player) for player in players]),
     html.Datalist(id='suggested_positions', children=[html.Option(value=position) for position in positions]),
     html.Datalist(id='suggested_roles', children=[html.Option(value=role) for role in role_stats]),
+    html.Datalist(id='suggested_nations', children=[html.Option(value=nation) for nation in nations]),
+    html.Datalist(id='suggested_leagues', children=[html.Option(value=league) for league in leagues]),
 
 ])
 
@@ -226,10 +244,12 @@ layout = html.Div([
 @callback(
     Output('active_data', 'data'),
     [Input('position_dropdown', 'value'),
-     Input('age_slider', 'value'),
-     Input('minutes_slider', 'value')],
+    Input('age_slider', 'value'),
+    Input('minutes_slider', 'value'),
+    Input('nation_dropdown', 'value'),
+    Input('league_dropdown', 'value')],
 )
-def filter_data(position, age, minutes):
+def filter_data(position, age, minutes, nation, league):
 
     # Position filter
     new_df = df[df[position] == 1]
@@ -242,6 +262,19 @@ def filter_data(position, age, minutes):
     minutes_min, minutes_max = minutes
     new_df = new_df[new_df['Mins'].between(minutes_min, minutes_max)]
 
+    # Nation Filter
+    if nation == 'Any':
+        new_df = new_df
+    else:
+        new_df = new_df[(new_df['Nat'] == nation) | (new_df['2nd Nat'] == nation)]
+        print(new_df)
+
+    # League/Club Filters
+    if league == 'Any':
+        new_df = new_df
+    else:
+        new_df = new_df[new_df['Based'] == league]
+
     return new_df.to_json(orient='split')
 
 ### Table Callbacks
@@ -249,21 +282,25 @@ def filter_data(position, age, minutes):
 # Player Compare Table
 @callback(
     Output('compare_table', 'children'),
-    [Input('position_dropdown', 'value'),
+    [Input('active_data', 'data'),
+    Input('position_dropdown', 'value'),
     Input('role_dropdown', 'value'),
     Input('playerA_dropdown', 'value'),
     Input('playerB_dropdown', 'value')]
 )
-def update_compare(position, role, playerA, playerB):
+def update_compare(df, position, role, playerA, playerB):
 
-    stats = ['Mins', 'Av Rat'] + role_stats[role]
+    df = pd.read_json(df, orient='split')
+
+    stats = ['Age', 'Nat', 'Club', 'Height', 'Weight', 'Left Foot', 'Right Foot', 'Mins', 'Av Rat'] + role_stats[role]
     names = [playerA, playerB]
 
     compare_table = df[df['Name'].isin(names)].set_index('Name')
     compare_table = compare_table[stats]
     compare_table = compare_table.T.reset_index()
 
-    return dash_table.DataTable(compare_table.to_dict('records'), [{"name": i, "id": i} for i in compare_table.columns])
+    return dash_table.DataTable(compare_table.to_dict('records'), [{"name": i, "id": i} for i in compare_table.columns],
+                                style_cell={'fontSize': 10, 'font-family': 'sans-serif'},)
 
 # Recommendations Table
 @callback(
@@ -288,6 +325,8 @@ def update_recommend(df, position):
     return dash_table.DataTable(table.to_dict('records'), [{"name": i, "id": i} for i in table.columns],
                                 sort_action="native",
                                 sort_mode="multi",
+                                style_cell={'fontSize': 10, 'font-family': 'sans-serif'},
+                                style_data={'height': 'auto', 'width': 'auto'}
                                 )
 
 ### Dropdown / Input Callbacks
@@ -317,6 +356,33 @@ def update_player_list(df):
     players = list(df.Name.values)
 
     return [html.Option(value=word) for word in players], players[0], players[1]
+
+# Nation Callback
+# League / Club Callbacks
+@callback(
+    [Output('suggested_nations', 'children'),
+    Output('nation_dropdown', 'value')],
+    Input('active_data', 'data')
+)
+def update_league_list():
+
+    nations = ['Any'] + df['Nat'].to_list()
+    nations = list(set(nations))
+
+    return [html.Option(value=nation) for nation in nations]
+
+# League / Club Callbacks
+@callback(
+    [Output('suggested_leagues', 'children'),
+    Output('leagues_dropdown', 'value')],
+    Input('active_data', 'data')
+)
+def update_league_list(df):
+
+    leagues = ['Any'] + df['Based'].to_list()
+    leagues = list(set(leagues))
+
+    return [html.Option(value=league) for league in leagues]
 
 
 ### Graph Callbacks

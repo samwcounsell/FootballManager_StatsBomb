@@ -11,6 +11,7 @@ def create_navbar():
                 children=[
                     dbc.DropdownMenuItem("Player Comparison", href='/'),
                     dbc.DropdownMenuItem(divider=True),
+                    dbc.DropdownMenuItem("Player Graphs", href='/player_graphs'),
                     dbc.DropdownMenuItem("Database", href='/database'),
                 ],
             ),

@@ -17,25 +17,30 @@ navbar = create_navbar()
 # df = call_data()
 
 # TODO: Temporary as position grid is slower and can use this output csv for testing
-df = pd.read_csv('./new_output.csv', dtype={"Personality": "string"})
+df = pd.read_csv('./processed_data.csv', dtype={"Personality": "string"})
 df['Personality'] = df['Personality'].fillna('-')
 compare_df = pd.DataFrame([])
 
 # TODO: Move adding new stats to hidden function
 df['Gls/xG'] = df['Gls'] / df['xG']
-df['Gls/90'] = df['Gls'] * df['Mins'] / 90
-df['FA/90'] = df['FA'] * df['Mins'] / 90
-df['Gls/90'] = df['Gls'] * df['Mins'] / 90
-df['Dist/90'] = df['Distance'] * df['Mins'] / 90
-df['xG/90'] = df['xG'] * df['Mins'] / 90
-df['Off/90'] = df['Off'] * df['Mins'] / 90
-df['Cr/90'] = df['Cr A'] * df['Mins'] / 90
-df['K Tck/90'] = df['K Tck'] * df['Mins'] / 90
-df['Fls/90'] = df['Fls'] * df['Mins'] / 90
+df['Gls/90'] = df['Gls'] * 90 / df['Mins']
+df['FA/90'] = df['FA'] * 90 / df['Mins']
+df['Gls/90'] = df['Gls'] * 90 / df['Mins']
+df['Dist/90'] = df['Distance'] * 90 / df['Mins']
+df['xG/90'] = df['xG'] * 90 / df['Mins']
+df['Off/90'] = df['Off'] * 90 / df['Mins']
+df['Cr/90'] = df['Cr A'] * 90 / df['Mins']
+df['K Tck/90'] = df['K Tck'] * 90 / df['Mins']
+df['Fls/90'] = df['Fls'] * 90 / df['Mins']
 df = df.round(decimals=3)
 
 df.replace([np.inf, -np.inf], 0, inplace=True)
 df = df.fillna(0)
+
+# Fixes Duplicate Names by Appending Club Initial
+df_copy = df['Name'].duplicated(keep=False)  # Mask for all duplicated values
+df.loc[df_copy, 'Name'] += (' (' + df.loc[df_copy, 'Club'].str[0:3] + ')')
+
 
 # TODO: Move adding skillset ratings to hidden function
 skillsets = ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement', 'Crossing', 'Work Rate',
@@ -118,12 +123,12 @@ role_stats = {
     'Inside Forward': [],
     'Attacking Midfielder': [],
     'Advanced Playmaker': ['Ast', 'Asts/90', 'K Ps/90', 'Pas %', 'Ps C/90', 'Drb/90'],
-    'Shadow Striker': [],
-    'Advanced Forward': ['xG', 'Gls', 'Gls/xG', 'Drb/90', 'Ch C/90', 'Asts/90'],
+    'Shadow Striker': ['xG', 'Gls', 'Gls/xG',],
+    'Advanced Forward': ['xG', 'Gls', 'Gls/xG', 'Gls/90', 'Drb/90', 'Ch C/90', 'Asts/90'],
     'False Nine': [],
-    'Poacher': [],
-    'Target Forward': [],
-    'Pressing Forward': [],
+    'Poacher': ['xG', 'Gls', 'Gls/xG', 'Gls/90', 'Hdr %'],
+    'Target Forward': ['xG', 'Gls', 'Gls/xG', 'Hdr %', 'Hdrs W/90', 'Asts/90'],
+    'Pressing Forward': ['xG', 'Gls', 'Gls/xG', 'Dist/90', 'Tck', 'Tck R'],
 }
 
 #Nations
@@ -133,6 +138,7 @@ nations = list(set(nations))
 # Leagues
 leagues= ['Any'] + df['Based'].to_list()
 leagues = list(set(leagues))
+
 
 # Page Layout
 layout = html.Div([
@@ -295,9 +301,13 @@ def update_compare(df, position, role, playerA, playerB):
     stats = ['Age', 'Nat', 'Club', 'Height', 'Weight', 'Left Foot', 'Right Foot', 'Mins', 'Av Rat'] + role_stats[role]
     names = [playerA, playerB]
 
+    df_copy = df['Name'].duplicated(keep=False)  # Mask for all duplicated values
+
+    df.loc[df_copy, 'Name'] += (' (' + df.loc[df_copy, 'Club'] + ')')
+
     compare_table = df[df['Name'].isin(names)].set_index('Name')
     compare_table = compare_table[stats]
-    compare_table = compare_table.T.reset_index()
+    compare_table = compare_table.T.reset_index().round(2)
 
     return dash_table.DataTable(compare_table.to_dict('records'), [{"name": i, "id": i} for i in compare_table.columns],
                                 style_cell={'fontSize': 10, 'font-family': 'sans-serif'},)
@@ -318,7 +328,7 @@ def update_recommend(df, position):
     # Later change this to sum for role skills rather than position skills
     df['Sum'] = df[position_skills[position]].sum(1)
 
-    df = df.round(decimals=2).sort_values(by='Sum', ascending=False)
+    df = df.round(2).sort_values(by='Sum', ascending=False)
     skills = ['Name'] + ['Sum'] + position_skills[position]
     table = df[skills]
 

@@ -74,4 +74,4 @@ for i in range(len(split_column)):
 
 # Calling dataframe from main page
 
-df.to_csv('../new_output.csv', index=False)
+df.to_csv('../processed_data.csv', index=False)

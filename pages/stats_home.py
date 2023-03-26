@@ -14,10 +14,10 @@ pd.set_option('display.max_rows', None)
 navbar = create_navbar()
 
 #TODO: Un-hashtag later
-# df = call_data()
+#df = call_data()
 
 # TODO: Temporary as position grid is slower and can use this output csv for testing
-df = pd.read_csv('./processed_data.csv', dtype={"Personality": "string"})
+df = pd.read_csv('./processed_data_23.csv', dtype={"Personality": "string", "Media Handling": "string"})
 df['Personality'] = df['Personality'].fillna('-')
 compare_df = pd.DataFrame([])
 
@@ -147,36 +147,30 @@ layout = html.Div([
 
     html.H1(children='', style={'textAlign': 'center', 'padding': 15}),
 
-    # Top Row Dropdowns
-    dbc.Row([
-        dbc.Col([
-            html.P(children='Please Select Input: Position'),
-            dcc.Input(id='position_dropdown', list='suggested_positions', value=positions[0], type='text'),
-            ]),
-        dbc.Col([
-            #TODO: Make roles option dependent on position selected (using callback)
-            html.P(children='Please Select Input: Player Role'),
-            dcc.Input(id='role_dropdown', list='suggested_roles', value=list(role_stats.keys())[0], type='text'),
-            ]),
-        dbc.Col([
-            # TODO: Make these auto-fill in as in previous iteration
-            html.P(children='Please Select Input: Player A'),
-            dcc.Input(id='playerA_dropdown', list='suggested_names', value=players[0], type='text'),
-            ]),
-        dbc.Col([
-            html.P(children='Please Select Input: Player B'),
-            dcc.Input(id='playerB_dropdown', list='suggested_names', value=players[2], type='text'),
-            ]),
-        dbc.Col([
-            html.P(children=' ')
-        ]),
-    ], style={"display": "grid", "grid-template-columns": "10% 10% 10% 10% 60%", 'fontSize': 11, 'padding-left': 15, 'padding-bottom': 25}),
-
     dbc.Row([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4('Hexagon'),
+                    dbc.Row([
+                        dbc.Col([
+                            html.P(children='Position'),
+                            dcc.Input(id='position_dropdown', list='suggested_positions', value=positions[0], type='text'),
+                            ]),
+                        dbc.Col([
+                            #TODO: Make roles option dependent on position selected (using callback)
+                            html.P(children='Player Role'),
+                            dcc.Input(id='role_dropdown', list='suggested_roles', value=list(role_stats.keys())[0], type='text'),
+                            ]),
+                        dbc.Col([
+                            # TODO: Make these auto-fill in as in previous iteration
+                            html.P(children='Player A'),
+                            dcc.Input(id='playerA_dropdown', list='suggested_names', value=players[0], type='text'),
+                            ]),
+                         dbc.Col([
+                            html.P(children='Player B'),
+                            dcc.Input(id='playerB_dropdown', list='suggested_names', value=players[2], type='text'),
+                            ])
+                    ], style={"display": "grid", "grid-template-columns": "25% 25% 25% 25%", 'fontSize': 11, 'padding-bottom': 10}),
                     dcc.Graph(id='polygon')
                 ], className='text-center')
             ]),
@@ -222,8 +216,8 @@ layout = html.Div([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4('Top Reccomendations'),
-                    html.Div(id='recommendation_table')
+                    html.H4('Top Recommendations'),
+                    html.Div(id='recommendation_table', style={'height': 500})
 
                 ])
             ], className='h-100 text-center')
@@ -336,7 +330,8 @@ def update_recommend(df, position):
                                 sort_action="native",
                                 sort_mode="multi",
                                 style_cell={'fontSize': 10, 'font-family': 'sans-serif'},
-                                style_data={'height': 'auto', 'width': 'auto'}
+                                style_data={'height': 'auto', 'width': 'auto'},
+                                style_table={'height': '67vh', 'overflow': 'auto'}
                                 )
 
 ### Dropdown / Input Callbacks

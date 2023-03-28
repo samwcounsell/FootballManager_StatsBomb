@@ -26,16 +26,13 @@ df['Gls/xG'] = df['Gls'] / df['xG']
 df['Gls/90'] = df['Gls'] * 90 / df['Mins']
 df['FA/90'] = df['FA'] * 90 / df['Mins']
 df['Gls/90'] = df['Gls'] * 90 / df['Mins']
-df['Dist/90'] = df['Distance'] * 90 / df['Mins']
 df['xG/90'] = df['xG'] * 90 / df['Mins']
 df['Off/90'] = df['Off'] * 90 / df['Mins']
-df['Cr/90'] = df['Cr A'] * 90 / df['Mins']
-df['K Tck/90'] = df['K Tck'] * 90 / df['Mins']
 df['Fls/90'] = df['Fls'] * 90 / df['Mins']
 df = df.round(decimals=3)
 
-df.replace([np.inf, -np.inf], 0, inplace=True)
-df = df.fillna(0)
+#df.replace([np.inf, -np.inf], 0, inplace=True)
+#df = df.fillna(0)
 
 # Fixes Duplicate Names by Appending Club Initial
 df_copy = df['Name'].duplicated(keep=False)  # Mask for all duplicated values
@@ -48,15 +45,14 @@ skillsets = ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movem
 
 df['Finishing'] = (df['Gls/xG'] ** 2) * df['Shot %'] * df['Gls/90']
 df['Dribbling'] = df['Drb/90'] * df['FA/90']
-# Fix these after proof of working
-df['Aerial'] = df['Height'] * (df['Weight'] ** 0.5) * df['Hdr %'] * df['Hdrs W/90'] * df['Aer A/90']
-df['Assisting'] = df['Asts/90'] * df['Ch C/90'] * df['K Ps/90'] * df['Pas %']
-df['Pressing'] = df['Dist/90'] * df['Tck'] * df['Int/90']
-df['Movement'] = df['xG/90'] + df['Shot/90'] + df['Off/90']
-df['Crossing'] = df['Cr/90'] * (df['Cr C/A'] ** 2) * df['Asts/90']
-df['Work Rate'] = df['Dist/90'] * df['Mins/Gm']
-df['Passing'] = df['Ps A/90'] * df['Pas %'] * df['K Ps/90']
-df['Tackling'] = df['K Tck/90'] * df['Tck'] * df['Tck R'] / df['Fls/90']
+df['Aerial'] = df['Height'] * (df['Weight'] ** 0.5) * (df['Hdr %'] ** 2) * df['Hdrs W/90']
+df['Assisting'] = (df['xA/90'] ** 2) * df['Asts/90'] * df['Ch C/90'] * df['OP-KP/90'] * df['Pas %']
+df['Pressing'] = df['Dist/90'] * (df['Tck/90'] ** 2) * (df['Int/90'] ** 2)
+df['Movement'] = (df['NP-xG/90'] ** 2) * (df['Shot/90'] + df['Off/90']) * df['xG/shot']
+df['Crossing'] = (df['OP-Crs C/90'] ** 2) * (df['OP-Cr %'] ** 2) * df['Asts/90']
+df['Work Rate'] = df['Dist/90'] * df['Sprints/90']
+df['Passing'] = df['Ps A/90'] * df['Pas %'] * df['OP-KP/90']
+df['Tackling'] = df['K Tck/90'] * df['Tck/90'] * df['Tck R'] / df['Fls/90']
 df['Intercepting'] = (df['Int/90'] ** 2) * df['Dist/90']
 df['Goalkeeping'] = df['Sv %']
 
@@ -118,7 +114,7 @@ role_stats = {
     'Mezzala': [],
     'Central Midfielder (At)': [],
     'Defensive Winger': [],
-    'Winger': [],
+    'Winger': ['Drb/90', 'FA/90'],
     'Inverted Winger': [],
     'Inside Forward': [],
     'Attacking Midfielder': [],
@@ -128,7 +124,7 @@ role_stats = {
     'False Nine': [],
     'Poacher': ['xG', 'Gls', 'Gls/xG', 'Gls/90', 'Hdr %'],
     'Target Forward': ['xG', 'Gls', 'Gls/xG', 'Hdr %', 'Hdrs W/90', 'Asts/90'],
-    'Pressing Forward': ['xG', 'Gls', 'Gls/xG', 'Dist/90', 'Tck', 'Tck R'],
+    'Pressing Forward': ['xG', 'Gls', 'Gls/xG', 'Dist/90', 'Tck/90', 'Tck R', 'Int/90', 'Poss Won/90'],
 }
 
 #Nations
@@ -136,9 +132,17 @@ nations = ['Any'] + df['Nat'].to_list()
 nations = list(set(nations))
 
 # Leagues
-leagues= ['Any'] + df['Based'].to_list()
+leagues = ['Any'] + df['Division'].to_list()
 leagues = list(set(leagues))
 
+# Clubs
+clubs = ['Any'] + df['Club'].to_list()
+clubs = list(set(clubs))
+
+# Wages
+log_dict = {i + 1: '{}'.format(10 ** i) for i in range(7)}
+zero_dict = {0: '0'}
+wage_dict = zero_dict | log_dict
 
 # Page Layout
 layout = html.Div([
@@ -170,7 +174,7 @@ layout = html.Div([
                             html.P(children='Player B'),
                             dcc.Input(id='playerB_dropdown', list='suggested_names', value=players[2], type='text'),
                             ])
-                    ], style={"display": "grid", "grid-template-columns": "25% 25% 25% 25%", 'fontSize': 11, 'padding-bottom': 10}),
+                    ], style={"display": "grid", "grid-template-columns": "25% 25% 25% 25%", 'fontSize': 9, 'padding-bottom': 10}),
                     dcc.Graph(id='polygon')
                 ], className='text-center')
             ]),
@@ -197,7 +201,7 @@ layout = html.Div([
                     ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
                     dbc.Row([
                         html.P('Minutes: '),
-                        dcc.RangeSlider(0, 6000, 200, value=[200, 6000], marks={0: '0', 1000: '1000', 2000: '2000', 3000: '3000', 4000: '4000', 5000: '5000', 6000: '6000'}, id='minutes_slider')
+                        dcc.RangeSlider(0, 6000, 200, value=[800, 6000], marks={0: '0', 1000: '1000', 2000: '2000', 3000: '3000', 4000: '4000', 5000: '5000', 6000: '6000'}, id='minutes_slider')
                     ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
                     dbc.Row([
                         html.P('Nation: '),
@@ -206,6 +210,14 @@ layout = html.Div([
                     dbc.Row([
                         html.P('League: '),
                         dcc.Input(id='league_dropdown', list='suggested_leagues', value='Any', type='text')
+                    ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
+                    dbc.Row([
+                        html.P('Club: '),
+                        dcc.Input(id='club_dropdown', list='suggested_clubs', value='Any', type='text')
+                    ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
+                    dbc.Row([
+                        html.P('Wage: '),
+                        dcc.RangeSlider(0, 7, id = 'wage_slider', marks=wage_dict, value=[0, 7], step = 1)
                     ], style={"display": "grid", "grid-template-columns": "15% 85%", 'fontSize': 11, 'padding': 10}),
                 ])
             ], className='h-100 text-center')
@@ -231,6 +243,7 @@ layout = html.Div([
     html.Datalist(id='suggested_roles', children=[html.Option(value=role) for role in role_stats]),
     html.Datalist(id='suggested_nations', children=[html.Option(value=nation) for nation in nations]),
     html.Datalist(id='suggested_leagues', children=[html.Option(value=league) for league in leagues]),
+    html.Datalist(id='suggested_clubs', children=[html.Option(value=club) for club in clubs])
 
 ])
 
@@ -246,10 +259,12 @@ layout = html.Div([
     [Input('position_dropdown', 'value'),
     Input('age_slider', 'value'),
     Input('minutes_slider', 'value'),
+    Input('wage_slider', 'value'),
     Input('nation_dropdown', 'value'),
-    Input('league_dropdown', 'value')],
+    Input('league_dropdown', 'value'),
+    Input('club_dropdown', 'value')],
 )
-def filter_data(position, age, minutes, nation, league):
+def filter_data(position, age, minutes, wage, nation, league, club):
 
     # Position filter
     new_df = df[df[position] == 1]
@@ -262,6 +277,14 @@ def filter_data(position, age, minutes, nation, league):
     minutes_min, minutes_max = minutes
     new_df = new_df[new_df['Mins'].between(minutes_min, minutes_max)]
 
+    # Wage Filter
+    wage_min, wage_max = wage
+    if wage_min != 0:
+        wage_min = 10 ** (wage_min - 1)
+    if wage_max !=0:
+        wage_max = 10 ** (wage_max - 1)
+    new_df = new_df[new_df['Wage'].between(wage_min, wage_max)]
+
     # Nation Filter
     if nation == 'Any':
         new_df = new_df
@@ -273,7 +296,12 @@ def filter_data(position, age, minutes, nation, league):
     if league == 'Any':
         new_df = new_df
     else:
-        new_df = new_df[new_df['Based'] == league]
+        new_df = new_df[new_df['Division'] == league]
+
+    if club == 'Any':
+        new_df = new_df
+    else:
+        new_df = new_df[new_df['Club'] == club]
 
     return new_df.to_json(orient='split')
 
@@ -292,7 +320,7 @@ def update_compare(df, position, role, playerA, playerB):
 
     df = pd.read_json(df, orient='split')
 
-    stats = ['Age', 'Nat', 'Club', 'Height', 'Weight', 'Left Foot', 'Right Foot', 'Mins', 'Av Rat'] + role_stats[role]
+    stats = ['Age', 'Nat', 'Club', 'Height', 'Weight', 'Left Foot', 'Right Foot', 'Mins', 'Personality'] + role_stats[role]
     names = [playerA, playerB]
 
     df_copy = df['Name'].duplicated(keep=False)  # Mask for all duplicated values
@@ -359,11 +387,12 @@ def update_player_list(df):
 
     df = pd.read_json(df, orient='split')
     players = list(df.Name.values)
+    print(players)
 
     return [html.Option(value=word) for word in players], players[0], players[1]
 
+
 # Nation Callback
-# League / Club Callbacks
 @callback(
     [Output('suggested_nations', 'children'),
     Output('nation_dropdown', 'value')],
@@ -384,11 +413,22 @@ def update_league_list():
 )
 def update_league_list(df):
 
-    leagues = ['Any'] + df['Based'].to_list()
+    leagues = ['Any'] + df['Division'].to_list()
     leagues = list(set(leagues))
 
     return [html.Option(value=league) for league in leagues]
 
+@callback(
+    [Output('suggested_clubs', 'children'),
+    Output('clubs_dropdown', 'value')],
+    Input('active_data', 'data')
+)
+def update_league_list(df):
+
+    clubs = ['Any'] + df['Club'].to_list()
+    clubs = list(set(clubs))
+
+    return [html.Option(value=club) for club in clubs]
 
 ### Graph Callbacks
 

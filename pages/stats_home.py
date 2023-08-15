@@ -16,6 +16,8 @@ navbar = create_navbar()
 #TODO: Un-hashtag later
 #df = call_data()
 
+#TODO: Add off-canvas to allow people to type out a shortlist
+
 # TODO: Temporary as position grid is slower and can use this output csv for testing
 df = pd.read_csv('./processed_data_23.csv', dtype={"Personality": "string", "Media Handling": "string"})
 df['Personality'] = df['Personality'].fillna('-')
@@ -41,7 +43,8 @@ df.loc[df_copy, 'Name'] += (' (' + df.loc[df_copy, 'Club'].str[0:3] + ')')
 
 # TODO: Move adding skillset ratings to hidden function
 skillsets = ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement', 'Crossing', 'Work Rate',
-             'Passing', 'Tackling', 'Intercepting', 'Goalkeeping']
+             'Passing', 'Tackling', 'Intercepting', 'Shot Stopping', 'Aerial Keeping', 'Penalty Saving', 'Catching',
+             'Parrying', 'Tipping']
 
 df['Finishing'] = (df['Gls/xG'] ** 2) * df['Shot %'] * df['Gls/90']
 df['Dribbling'] = df['Drb/90'] * df['FA/90']
@@ -54,7 +57,13 @@ df['Work Rate'] = df['Dist/90'] * df['Sprints/90']
 df['Passing'] = df['Ps A/90'] * df['Pas %'] * df['OP-KP/90']
 df['Tackling'] = df['K Tck/90'] * df['Tck/90'] * df['Tck R'] / df['Fls/90']
 df['Intercepting'] = (df['Int/90'] ** 2) * df['Dist/90']
-df['Goalkeeping'] = df['Sv %']
+df['Shot Stopping'] = (df['Sv %'] ** 2) * df['xGP/90']
+df['Aerial Keeping'] = df['Height']
+df['Penalty Saving'] = df['Pens Saved Ratio']
+df['Catching'] = df['Svh'] / (df['Svh'] + df['Svp'] + df['Svt'])
+df['Parrying'] = df['Svp'] / (df['Svh'] + df['Svp'] + df['Svt'])
+df['Tipping'] = df['Svt'] / (df['Svh'] + df['Svp'] + df['Svt'])
+
 
 # Required lists/dicts/etc.,
 positions = ['GK', 'DL', 'DC', 'DR', 'WBL', 'DM', 'WBR', 'ML', 'MC', 'MR', 'AML', 'AMC', 'AMR', 'ST']
@@ -80,7 +89,7 @@ position_roles = {
 }
 
 position_skills = {
-    'GK': ['Finishing', 'Dribbling', 'Aerial', 'Assisting', 'Pressing', 'Movement'],
+    'GK': ['Shot Stopping', 'Penalty Saving', 'Catching', 'Parrying', 'Tipping', 'Passing'],
     'DL': ['Crossing', 'Dribbling', 'Aerial', 'Assisting', 'Work Rate', 'Tackling'],
     'DC': ['Passing', 'Pressing', 'Aerial', 'Finishing', 'Intercepting', 'Tackling'],
     'DR': ['Crossing', 'Dribbling', 'Aerial', 'Assisting', 'Work Rate', 'Tackling'],
@@ -97,7 +106,7 @@ position_skills = {
 }
 
 role_stats = {
-    'Goalkeeper': ['Sv %'],
+    'Goalkeeper': ['Sv %', 'Svh', 'Svp', 'Svt'],
     'Sweeper Keeper': ['Sv %'],
     'Fullback': ['Fls', 'Tck'],
     'Wingback': [],
@@ -359,7 +368,7 @@ def update_recommend(df, position):
                                 sort_mode="multi",
                                 style_cell={'fontSize': 10, 'font-family': 'sans-serif'},
                                 style_data={'height': 'auto', 'width': 'auto'},
-                                style_table={'height': '67vh', 'overflow': 'auto'}
+                                style_table={'height': '75vh', 'overflow': 'auto'}
                                 )
 
 ### Dropdown / Input Callbacks

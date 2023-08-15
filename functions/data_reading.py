@@ -4,7 +4,7 @@ import numpy as np
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 900)
 
-df = pd.read_csv('FM23_Sample_Data.csv', engine="pyarrow")
+df = pd.read_csv('Freiburg_Data.csv', engine="pyarrow")
 df = df.iloc[:-2, 2:]
 df = df.replace('-', 0)
 df = df.replace('N/A', 0)
